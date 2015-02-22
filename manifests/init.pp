@@ -55,6 +55,11 @@
 #   Whether to install a cronjob to perform a scheduled backup.
 #   Enabled by default, pass 'false' to disable.
 #   (Optional, enabled by default)
+# [*silentcron*]
+#   Generate backup output only if there was an error. Setting this
+#   to true will surpress all mails from cron unless the backup script
+#   failed.
+#   (Optional, defaults to send daily emails).
 #
 # === Examples
 #
@@ -79,21 +84,22 @@
 #
 # Copyright 2013 Bashton Ltd
 #
-class xtrabackup ($dbuser,             # Database username
-                  $dbpass,             # Database password
-                  $hour      = undef,  # Cron hour
-                  $minute    = undef,  # Cron minute
-                  $workdir   = '/tmp', # Working directory
-                  $outputdir,          # Directory to output to
-                  $sshdest   = undef,  # SSH destination
-                  $sshkey    = undef,  # SSH private key to use
-                  $keepdays  = undef,  # Keep the last x days of backups
-                  $gzip      = true,   # Compress using gzip
-                  $parallel  = 1,      # Threads to use
-                  $slaveinfo = undef,  # Record master log pos if true
-                  $safeslave = undef,  # Disconnect clients from slave
-                  $addrepo   = true,   # Add the Percona yum/apt repo
-                  $cronjob   = true,   # Install a cron job
+class xtrabackup ($dbuser,                    # Database username
+                  $dbpass,                    # Database password
+                  $hour             = undef,  # Cron hour
+                  $minute           = undef,  # Cron minute
+                  $workdir          = '/tmp', # Working directory
+                  $outputdir,                 # Directory to output to
+                  $sshdest          = undef,  # SSH destination
+                  $sshkey           = undef,  # SSH private key to use
+                  $keepdays         = undef,  # Keep the last x days of backups
+                  $gzip             = true,   # Compress using gzip
+                  $parallel         = 1,      # Threads to use
+                  $slaveinfo        = undef,  # Record master log pos if true
+                  $safeslave        = undef,  # Disconnect clients from slave
+                  $addrepo          = true,   # Add the Percona yum/apt repo
+                  $cronjob          = true,   # Install a cron job
+                  $silentcron       = false,  # Send emails always
                  ) {
 
   if ($addrepo) {
@@ -131,8 +137,13 @@ class xtrabackup ($dbuser,             # Database username
     if ( !$hour or !$minute ) {
       fail('Hour and minute parameters are mandatory when cronjob is true.')
     }
+    if $silentcron {
+        $command_add = ' silent'
+    } else {
+        $command_add = ''
+    }
     cron { 'xtrabackup':
-      command => '/usr/local/bin/mysql-backup',
+      command => "/usr/local/bin/mysql-backup${command_add}",
       hour    => $hour,
       minute  => $minute,
     }

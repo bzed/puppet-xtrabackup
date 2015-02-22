@@ -4,25 +4,60 @@
 # (C) 2013 Bashton Ltd
 
 DATE=$( date +%Y-%m-%d )
+TMP=$(mktemp)
+SILENT="$1"
 
-/usr/bin/innobackupex \
-  --stream=xbstream \
-  --user=<%= @dbuser %> \
-  --password=<%= @dbpass %> \
-  --parallel=<%= @parallel %> \
-<%= "  --slave-info \\\n" if @slaveinfo -%>
-<%= "  --safe-slave-backup \\\n" if @safeslave -%>
-<%= "  " + @workdir + " \\\n" -%>
-<%= "  | gzip -c9 \\\n" if @gzip -%>
-<%= "  | ssh " + @sshdest if @sshdest -%>
-<%= " -i " + @sshkey + " \\\n" if @sshkey -%>
-<%= "  cat - \\\n" if @sshdest -%>
-  > <%= @outputdir -%>/mysql-backup-${DATE}.xbstream<%= ".gz" if @gzip %>
+function cleanup() {
+    rm -f ${TMP}
+}
+
+function backup() {
+    /usr/bin/innobackupex \
+      --stream=xbstream \
+      --user=<%= @dbuser %> \
+      --password=<%= @dbpass %> \
+      --parallel=<%= @parallel %> \
+    <%= "  --slave-info \\\n" if @slaveinfo -%>
+    <%= "  --safe-slave-backup \\\n" if @safeslave -%>
+    <%= "  " + @workdir + " \\\n" -%>
+    <%= "  | gzip -c9 \\\n" if @gzip -%>
+    <%= "  | ssh " + @sshdest if @sshdest -%>
+    <%= " -i " + @sshkey + " \\\n" if @sshkey -%>
+    <%= "  cat - \\\n" if @sshdest -%>
+        > <%= @outputdir -%>/mysql-backup-${DATE}.xbstream<%= ".gz" if @gzip %>
+
+    for i in ${PIPESTATUS[@]}; do
+        if [ $i -gt 0 ]; then
+            return $i
+        fi
+    done
+}
 
 <% if @keepdays -%>
-# Clean up backups older than <%= @keepdays %>
-<%= "ssh " + @sshdest if @sshdest -%>
-<%= " -i " + @sshkey + " \\\n  " if @sshkey -%>
-find <%= @outputdir %> -maxdepth 1 -name 'mysql-backup-*.xbstream*' \
-  -type f -mtime +<%= @keepdays %> -delete
+function keepdays() {
+    # Clean up backups older than <%= @keepdays %>
+    <%= "ssh " + @sshdest if @sshdest -%>
+    <%= " -i " + @sshkey + " \\\n  " if @sshkey -%>
+    find <%= @outputdir %> -maxdepth 1 -name 'mysql-backup-*.xbstream*' \
+      -type f -mtime +<%= @keepdays %> -delete
+}
 <% end -%>
+
+
+trap cleanup EXIT
+
+backup 2>${TMP}
+ret=$?
+
+if [ "${SILENT}" != "silent" -o $ret -gt 0 ]; then
+    cat ${TMP}
+fi
+
+<% if @keepdays -%>
+keepdays
+<% end -%>
+
+trap - EXIT
+cleanup
+
+exit $ret
