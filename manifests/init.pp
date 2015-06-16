@@ -60,6 +60,10 @@
 #   to true will surpress all mails from cron unless the backup script
 #   failed.
 #   (Optional, defaults to send daily emails).
+# [*install_20*]
+#   Whether to install Xtrabackup 2.0; if set to false installs the latest (2.1)
+#   instead.
+#   (Optional, disabled by default)
 #
 # === Examples
 #
@@ -84,22 +88,23 @@
 #
 # Copyright 2013 Bashton Ltd
 #
-class xtrabackup ($dbuser,                    # Database username
-                  $dbpass,                    # Database password
-                  $hour             = undef,  # Cron hour
-                  $minute           = undef,  # Cron minute
-                  $workdir          = '/tmp', # Working directory
-                  $outputdir,                 # Directory to output to
-                  $sshdest          = undef,  # SSH destination
-                  $sshkey           = undef,  # SSH private key to use
-                  $keepdays         = undef,  # Keep the last x days of backups
-                  $gzip             = true,   # Compress using gzip
-                  $parallel         = 1,      # Threads to use
-                  $slaveinfo        = undef,  # Record master log pos if true
-                  $safeslave        = undef,  # Disconnect clients from slave
-                  $addrepo          = true,   # Add the Percona yum/apt repo
-                  $cronjob          = true,   # Install a cron job
-                  $silentcron       = false,  # Send emails always
+class xtrabackup ($dbuser,              # Database username
+                  $dbpass,              # Database password
+                  $hour       = undef,  # Cron hour
+                  $minute     = undef,  # Cron minute
+                  $workdir    = '/tmp', # Working directory
+                  $outputdir,           # Directory to output to
+                  $sshdest    = undef,  # SSH destination
+                  $sshkey     = undef,  # SSH private key to use
+                  $keepdays   = undef,  # Keep the last x days of backups
+                  $gzip       = true,   # Compress using gzip
+                  $parallel   = 1,      # Threads to use
+                  $slaveinfo  = undef,  # Record master log pos if true
+                  $safeslave  = undef,  # Disconnect clients from slave
+                  $addrepo    = true,   # Add the Percona yum/apt repo
+                  $cronjob    = true,   # Install a cron job
+                  $silentcron = false,  # Send emails always
+                  $install_20 = false,  # Install 2.0 instead of latest
                  ) {
 
   if ($addrepo) {
@@ -117,7 +122,12 @@ class xtrabackup ($dbuser,                    # Database username
       }
   }
 
-  ensure_packages(['percona-xtrabackup'])
+  if ($install_20) {
+    ensure_packages(['percona-xtrabackup-20'])
+  }
+  else {
+    ensure_packages(['percona-xtrabackup'])
+  }
 
   file { '/usr/local/bin/mysql-backup':
     owner   => 'root',
