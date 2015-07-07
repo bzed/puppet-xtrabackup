@@ -53,6 +53,10 @@ if [ "${SILENT}" != "silent" -o $ret -gt 0 ]; then
     cat ${TMP}
 fi
 
+<% if @statusfile -%>
+if [ $ret -eq 0 ]; then touch <%= @statusfile -%>; fi
+<% end -%>
+
 <% if @keepdays -%>
 keepdays
 <% end -%>

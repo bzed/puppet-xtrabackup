@@ -64,6 +64,9 @@
 #   Whether to install Xtrabackup 2.0; if set to false installs the latest (2.1)
 #   instead.
 #   (Optional, disabled by default)
+# [*statusfile*]
+#   File to touch in case the backup was successfull. Can be used for to monitor
+#   the backup status using check_file_age.
 #
 # === Examples
 #
@@ -105,6 +108,7 @@ class xtrabackup ($dbuser,              # Database username
                   $cronjob    = true,   # Install a cron job
                   $silentcron = false,  # Send emails always
                   $install_20 = false,  # Install 2.0 instead of latest
+                  $statusfile = undef,  # statusfile to touch if cronjob was successfull.
                  ) {
 
   if ($addrepo) {
